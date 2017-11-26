@@ -34,6 +34,7 @@ public class Router {
 	Socket sock;
 	ObjectInputStream dIn;
 	ObjectOutputStream dOut;
+	Timer timer;
 
 
 
@@ -75,6 +76,21 @@ public class Router {
 			//response
 			DvrPacket serverResponse = (DvrPacket) dIn.readObject();
 			
+			//start timer
+			timer = new Timer(true);
+			timer.schedule(new TimeoutHandler(this), updateInterval);
+			DvrPacket packet;
+			do{
+				
+				packet = (DvrPacket) dIn.readObject();
+				processDvr(packet);
+				
+			} while(packet.type != DvrPacket.QUIT);
+			
+			//close socket and cancel timer
+			timer.cancel();
+			sock.close();
+			
 		}catch(IOException e){
 			e.getMessage();
 		}catch(ClassNotFoundException e){
@@ -89,6 +105,11 @@ public class Router {
 		}else{
 			
 		}
+	}
+	
+	public void processTimeout() {
+		// TODO Auto-generated method stub
+		
 	}
 
 	
@@ -131,5 +152,6 @@ public class Router {
 		System.out.println("Routing Table at Router #" + routerId);
 		System.out.print(rtn.toString());
 	}
+
 
 }
