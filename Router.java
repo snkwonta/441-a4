@@ -1,3 +1,6 @@
+//Sodienye Nkwonta
+//ID: 30000197
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -35,6 +38,8 @@ public class Router {
 	ObjectInputStream dIn;
 	ObjectOutputStream dOut;
 	Timer timer;
+	int numRouters;
+	boolean localminCostVector = false;
 
 
 
@@ -76,6 +81,24 @@ public class Router {
 			//response
 			DvrPacket serverResponse = (DvrPacket) dIn.readObject();
 			
+			numRouters = serverResponse.mincost.length;
+			
+			linkcost = serverResponse.mincost;
+			mincost[routerId] = serverResponse.mincost;
+//			mincost = new int[numRouters][numRouters];
+//			mincost[routerId] = linkcost.clone();
+			nexthop = new int[numRouters];
+			
+//			for(int i = 0 ; i < numRouters; i++) {
+//				if(mincost[routerId][i] != 999) {
+//					nexthop[i] = i;
+//				}
+//				else {
+//					nexthop[i] = -1;
+//				}
+//				
+//			}
+			
 			//start timer
 			timer = new Timer(true);
 			timer.schedule(new TimeoutHandler(this), updateInterval);
@@ -84,6 +107,9 @@ public class Router {
 				
 				packet = (DvrPacket) dIn.readObject();
 				processDvr(packet);
+				
+				//initialize neighbors/next
+				
 				
 			} while(packet.type != DvrPacket.QUIT);
 			
@@ -96,15 +122,35 @@ public class Router {
 		}catch(ClassNotFoundException e){
 			e.getMessage();
 		}
-		return new RtnTable();
+		return new RtnTable(mincost[routerId], nexthop);
 	}
 	
 	public void processDvr(DvrPacket dvr){
 		if(dvr.sourceid == DvrPacket.SERVER){
 			linkcost = dvr.mincost;
+			mincost[dvr.sourceid] = dvr.mincost;
+			
+//			for(int i = 0 ; i < numRouters; i++) {
+//				if(mincost[routerId][i] != 999) {
+//					nexthop[i] = i;
+//				}
+//				else {
+//					nexthop[i] = -1;
+//				}
+//				
+//			}
 		}else{
 			
 		}
+		
+		if(localminCostVector == true){
+			
+		} else {
+			
+		}
+		
+		//bellman ford algorithm
+		
 	}
 	
 	public void processTimeout() {
