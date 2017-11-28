@@ -5,6 +5,10 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import cpsc441.a4.shared.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Router Class
@@ -38,7 +42,7 @@ public class Router {
 	ObjectInputStream dIn;
 	ObjectOutputStream dOut;
 	Timer timer;
-	int numRouters;
+	int numOfRouters;
 	boolean localminCostVector = false;
 
 
@@ -81,27 +85,31 @@ public class Router {
 			//response
 			DvrPacket serverResponse = (DvrPacket) dIn.readObject();
 			
-			numRouters = serverResponse.mincost.length;
+			numOfRouters = serverResponse.mincost.length;
 			
 			linkcost = serverResponse.mincost;
-			mincost[routerId] = serverResponse.mincost;
-//			mincost = new int[numRouters][numRouters];
-//			mincost[routerId] = linkcost.clone();
-			nexthop = new int[numRouters];
+			mincost[routerId] = linkcost.clone();
+			nexthop = new int[numOfRouters];
 			
-//			for(int i = 0 ; i < numRouters; i++) {
-//				if(mincost[routerId][i] != 999) {
-//					nexthop[i] = i;
-//				}
-//				else {
-//					nexthop[i] = -1;
-//				}
-//				
+			
+//			int i = 0;
+//			while(i < numOfRouters){
+				
 //			}
+			
+			for(int i = 0 ; i < numOfRouters; i++) {
+				if(mincost[routerId][i] != 999) {
+					nexthop[i] = i;
+				}
+				else {
+					nexthop[i] = -1;
+				}
+				
+			}
 			
 			//start timer
 			timer = new Timer(true);
-			timer.schedule(new TimeoutHandler(this), updateInterval);
+			timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval);
 			DvrPacket packet;
 			do{
 				
@@ -120,33 +128,36 @@ public class Router {
 		}catch(IOException e){
 			e.getMessage();
 		}catch(ClassNotFoundException e){
-			e.getMessage();
+			System.out.println("Error" + e.getMessage());
 		}
-		return new RtnTable(mincost[routerId], nexthop);
+//		return new RtnTable(mincost[routerId], nexthop);
+		return new RtnTable();
 	}
 	
 	public void processDvr(DvrPacket dvr){
 		if(dvr.sourceid == DvrPacket.SERVER){
 			linkcost = dvr.mincost;
 			mincost[dvr.sourceid] = dvr.mincost;
+			nexthop = new int[routerId];
 			
-//			for(int i = 0 ; i < numRouters; i++) {
-//				if(mincost[routerId][i] != 999) {
-//					nexthop[i] = i;
-//				}
-//				else {
-//					nexthop[i] = -1;
-//				}
-//				
-//			}
+			for(int i = 0 ; i < numOfRouters; i++) {
+				if(mincost[routerId][i] != 999) {
+					nexthop[i] = i;
+				}
+				else {
+					nexthop[i] = -1;
+				}
+				
+			}
 		}else{
 			
 		}
 		
 		if(localminCostVector == true){
-			
+			//send local mincost vector to neighbors
+			//restart timer
 		} else {
-			
+	
 		}
 		
 		//bellman ford algorithm
@@ -185,7 +196,7 @@ public class Router {
 		System.out.printf("starting Router #%d with parameters:\n", routerId);
 		System.out.printf("Relay server host name: %s\n", serverName);
 		System.out.printf("Relay server port number: %d\n", serverPort);
-		System.out.printf("Routing update intwerval: %d (milli-seconds)\n", updateInterval);
+		System.out.printf("Routing update interval: %d (milli-seconds)\n", updateInterval);
 		
 		// start the router
 		// the start() method blocks until the router receives a QUIT message
