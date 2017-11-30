@@ -42,8 +42,9 @@ public class Router {
 	Socket sock;
 	ObjectInputStream dIn;
 	ObjectOutputStream dOut;
-	ScheduledExecutorService timer;
-	Future<?> start;
+	Timer timer1;
+//	ScheduledExecutorService timer;
+//	Future<?> start;
 	int numOfRouters;
 	
 
@@ -84,23 +85,32 @@ public class Router {
 			dOut.writeObject(dvr);
 			dOut.flush();
 //			
-//			//response
+			//response
 			DvrPacket serverResponse = (DvrPacket) dIn.readObject();
 //			
 			numOfRouters = serverResponse.mincost.length;
 //			
+			linkcost = new int[numOfRouters];
 			linkcost = serverResponse.mincost;
 			
 			mincost = new int[numOfRouters][numOfRouters];
 			mincost[routerId] = linkcost.clone();
 			
 			nexthop = new int[numOfRouters];
-//			
-//			
-////			int i = 0;
-////			while(i < numOfRouters){
-//				
-////			}
+			
+			int i = 0;
+			
+			while(i < numOfRouters){
+				
+				if(routerId != DvrPacket.INFINITY){
+					nexthop[i] = i ;
+				} else{
+					nexthop[i] = -1 ;
+				}
+				
+				i++;
+			}
+	
 //			
 //			for(int i = 0 ; i < numOfRouters; i++) {
 //				if(mincost[routerId][i] != 999) {
@@ -112,12 +122,15 @@ public class Router {
 //				
 //			}
 //			
-//			//start timer
+			//start timer
 //			timer = new Timer(true);
 //			timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval);
 			
-			timer  = Executors.newScheduledThreadPool(1);
-			start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
+//			timer  = Executors.newScheduledThreadPool(1);
+//			start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
+			
+			timer1 = new Timer(true);
+			timer1.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval);
 			DvrPacket packet;
 			do{
 				
@@ -130,8 +143,8 @@ public class Router {
 			} while(packet.type != DvrPacket.QUIT);
 //			
 //			//close socket and cancel timer
-//			timer.cancel();
-			timer.shutdown();
+			timer1.cancel();
+//			timer.shutdown();
 			sock.close();
 //			
 		}catch(IOException e){
@@ -148,19 +161,28 @@ public class Router {
 			if(dvr.type == DvrPacket.QUIT){
 				//quit program
 			} else if(dvr.type == DvrPacket.HELLO){
+				linkcost = new int[numOfRouters];
 				linkcost = dvr.mincost;
 				
 				mincost = new int[numOfRouters][numOfRouters];
 				mincost[routerId] = linkcost.clone();
 				
-				nexthop = new int[numOfRouters];
+//				nexthop = new int[numOfRouters];
+			} else if(dvr.type == DvrPacket.ROUTE){
+//				linkcost = new int[numOfRouters];
+//				linkcost = dvr.mincost;
+//				
+//				mincost = new int[numOfRouters][numOfRouters];
+//				mincost[routerId] = linkcost.clone();
+//				
+//				nexthop = new int[numOfRouters];
 			}
 
 		}else{
-			
+			mincost[dvr.sourceid] = dvr.mincost;
 		}
 		
-		if(localminCostVector){
+		if(!localminCostVector){
 			//send local mincost vector to neighbors
 			
 			for(int i = 0; i < numOfRouters; i++){
@@ -182,8 +204,8 @@ public class Router {
 			}
 			//restart timer
 			
-			start.cancel(true);
-			start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
+//			start.cancel(true);
+//			start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
 		} else {
 	
 		}
@@ -197,17 +219,20 @@ public class Router {
 		for(int i = 0; i < numOfRouters; i++){
 			
 			//come back to this
-			if(i == routerId || linkcost[i] == DvrPacket.INFINITY)
-				continue;
-			
-				DvrPacket pkttoNeighbors  = new DvrPacket(this.routerId, i, DvrPacket.ROUTE, mincost[routerId]);
+			if(i == routerId || linkcost[i] == DvrPacket.INFINITY){
 				
+			}else {
+				DvrPacket pkttoNeighbors  = new DvrPacket(this.routerId, i, DvrPacket.ROUTE, mincost[routerId]);
+
 				try{
+
 					dOut.writeObject(pkttoNeighbors);
 					dOut.flush();
 				}catch(IOException e){
 					e.getMessage();
+				
 				}
+			}
 				
 			
 		}
