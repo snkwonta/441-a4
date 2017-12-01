@@ -135,29 +135,37 @@ public class Router {
 			
 			timer  = Executors.newScheduledThreadPool(1);
 			start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
-			
-//			timer1 = new Timer(true);
-//			timer1.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval);
-			DvrPacket packet;
+
+			DvrPacket packet = new DvrPacket();
 			do{
 				
-				packet = (DvrPacket) dIn.readObject();
-				processDvr(packet);
-//				
+				//something wrong
+//				packet = (DvrPacket) dIn.readObject();
+//				processDvr(packet);
+				
+				try{
+					packet = (DvrPacket) dIn.readObject();
+					processDvr(packet);					
+				}catch(Exception e){
+					System.out.println(e.getMessage());
+				}
+				
 //				//initialize neighbors/next
-//				
-//				
+				
+				
 			} while(packet.type != DvrPacket.QUIT);
 //			
 //			//close socket and cancel timer
-//			timer1.cancel();
+
+			dIn.close();
+//			dOut.close();
 			timer.shutdown();
 			sock.close();
-//			
+			
 		}catch(IOException e){
-			e.getMessage();
+			e.printStackTrace();
 		}catch(ClassNotFoundException e){
-			e.getMessage();
+			e.printStackTrace();
 		}
 		return new RtnTable(mincost[routerId], nexthop);
 	}
@@ -165,9 +173,7 @@ public class Router {
 	public void processDvr(DvrPacket dvr){
 		boolean localminCostVector = false;
 		if(dvr.sourceid == DvrPacket.SERVER){
-			if(dvr.type == DvrPacket.QUIT){
-				//quit program
-			} else if(dvr.type == DvrPacket.HELLO){
+				if(dvr.type == DvrPacket.HELLO){
 				linkcost = new int[numOfRouters];
 				linkcost = dvr.mincost;
 				
@@ -183,6 +189,8 @@ public class Router {
 				mincost[routerId] = linkcost.clone();
 				
 //				nexthop = new int[numOfRouters];
+			} else if(dvr.type == DvrPacket.QUIT){
+				//quit program
 			}
 
 		}else{
@@ -200,10 +208,11 @@ public class Router {
 						DvrPacket pkttoNeighbors  = new DvrPacket(this.routerId, i, DvrPacket.ROUTE, mincost[routerId]);
 						
 						try{
+							//something wrong
 							dOut.writeObject(pkttoNeighbors);
 							dOut.flush();
 						}catch(IOException e){
-							e.getMessage();
+							e.printStackTrace();
 						}
 						
 					
