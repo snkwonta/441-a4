@@ -90,9 +90,9 @@ public class Router {
 			DvrPacket serverResponse = (DvrPacket) dIn.readObject();
 			processDvr(serverResponse);
 			
-			
+			//initialize linkcost, mincost, and nexthop
 			numOfRouters = serverResponse.mincost.length;
-//			
+			
 			linkcost = new int[numOfRouters];
 			linkcost = serverResponse.mincost;
 			
@@ -100,28 +100,8 @@ public class Router {
 			mincost[routerId] = linkcost.clone();
 			
 			nexthop = new int[numOfRouters];
-			
-//			int i = 0;
-			
-//			for(int i = 0; i<numOfRouters; i++){
-//				
-//				if(i==routerId){
-//					
-//					nexthop[i] = i;
-//					
-//				}else if(linkcost[i] != DvrPacket.INFINITY){
-//					
-//					nexthop[i] = i;
-//					
-//				}else{
-//					
-//					nexthop[i] = -1;
-//					
-//				}
-//				
-//			}
-	
-//			
+
+			//next hop
 			for(int i = 0 ; i < numOfRouters; i++) {
 				if(mincost[routerId][i] != 999) {
 					nexthop[i] = i;
@@ -139,21 +119,21 @@ public class Router {
 			DvrPacket packet = new DvrPacket();
 			do{
 				
-				//something wrong
+				//read and process packet response
 				packet = (DvrPacket) dIn.readObject();
 				processDvr(packet);
 				
-//				//initialize neighbors/next
-				
 				
 			} while(packet.type != DvrPacket.QUIT);
-//			
+		
 //			//close socket and cancel timer
 
 			dIn.close();
 
 			timer.shutdown();
 			sock.close();
+			
+			//catch exceptions
 			
 		}catch(IOException e){
 			e.printStackTrace();
@@ -193,17 +173,8 @@ public class Router {
 				
 				mincost = new int[numOfRouters][numOfRouters];
 				mincost[routerId] = dvr.mincost;
+
 				
-				isNeighbor = new boolean[numOfRouters];
-				for(int i = 0; i < numOfRouters; i++){
-					if(linkcost[i] == DvrPacket.INFINITY){
-						isNeighbor[i] = false;
-					} else{
-						isNeighbor[i] = true;
-					}
-				}
-				
-//				nexthop = new int[numOfRouters];
 			}
 
 		}else{
@@ -223,35 +194,20 @@ public class Router {
 				//bellman ford algoritm
 					
 					if(mincost[routerId][i] > linkcost[dvr.sourceid] + mincost[dvr.sourceid][i]){
-						
 						mincost[routerId][i] = linkcost[dvr.sourceid] + mincost[dvr.sourceid][i];
-						
-						//need to remember what node to go through to get the efficient path
 						nexthop[i] = dvr.sourceid;
-						
+						//call process timeout to resend packets
 						processTimeout();
 						
+						
+						//restart timer
 						start.cancel(true);
 						start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
-					}
-					
-//						DvrPacket pkttoNeighbors  = new DvrPacket(this.routerId, i, DvrPacket.ROUTE, mincost[routerId]);
-//						
-//						try{
-//							//something wrong
-//							dOut.writeObject(pkttoNeighbors);
-//							dOut.flush();
-//						}catch(IOException e){
-//							e.printStackTrace();
-//						}
-						
+					}	
 					
 				}
-				//restart timer
+
 		}
-		
-		
-		//bellman ford algorithm
 		
 	}
 	
@@ -271,17 +227,13 @@ public class Router {
 				}
 			
 			}
-
-
-				
-			
+	
 		}
 		
 		
 	}
 
-	
-	
+
     /**
      * A simple test driver
      * 
@@ -320,6 +272,4 @@ public class Router {
 		System.out.println("Routing Table at Router #" + routerId);
 		System.out.print(rtn.toString());
 	}
-
-
 }
