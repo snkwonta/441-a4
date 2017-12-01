@@ -88,7 +88,9 @@ public class Router {
 //			
 			//response
 			DvrPacket serverResponse = (DvrPacket) dIn.readObject();
-//			
+			processDvr(serverResponse);
+			
+			
 			numOfRouters = serverResponse.mincost.length;
 //			
 			linkcost = new int[numOfRouters];
@@ -101,34 +103,34 @@ public class Router {
 			
 //			int i = 0;
 			
-			for(int i = 0; i<numOfRouters; i++){
-				
-				if(i==routerId){
-					
-					nexthop[i] = i;
-					
-				}else if(linkcost[i] != DvrPacket.INFINITY){
-					
-					nexthop[i] = i;
-					
-				}else{
-					
-					nexthop[i] = -1;
-					
-				}
-				
-			}
-	
-//			
-//			for(int i = 0 ; i < numOfRouters; i++) {
-//				if(mincost[routerId][i] != 999) {
+//			for(int i = 0; i<numOfRouters; i++){
+//				
+//				if(i==routerId){
+//					
 //					nexthop[i] = i;
-//				}
-//				else {
+//					
+//				}else if(linkcost[i] != DvrPacket.INFINITY){
+//					
+//					nexthop[i] = i;
+//					
+//				}else{
+//					
 //					nexthop[i] = -1;
+//					
 //				}
 //				
 //			}
+	
+//			
+			for(int i = 0 ; i < numOfRouters; i++) {
+				if(mincost[routerId][i] != 999) {
+					nexthop[i] = i;
+				}
+				else {
+					nexthop[i] = -1;
+				}
+//				
+			}
 //			
 			//start timer
 			timer  = Executors.newScheduledThreadPool(1);
@@ -138,15 +140,8 @@ public class Router {
 			do{
 				
 				//something wrong
-//				packet = (DvrPacket) dIn.readObject();
-//				processDvr(packet);
-				
-				try{
-					packet = (DvrPacket) dIn.readObject();
-					processDvr(packet);					
-				}catch(Exception e){
-					System.out.println(e.getMessage());
-				}
+				packet = (DvrPacket) dIn.readObject();
+				processDvr(packet);
 				
 //				//initialize neighbors/next
 				
@@ -156,7 +151,7 @@ public class Router {
 //			//close socket and cancel timer
 
 			dIn.close();
-//			dOut.close();
+
 			timer.shutdown();
 			sock.close();
 			
@@ -180,52 +175,79 @@ public class Router {
 					mincost[routerId] = dvr.mincost;
 					
 					isNeighbor = new boolean[numOfRouters];
+					for(int i = 0; i < numOfRouters; i++){
+						if(linkcost[i] == DvrPacket.INFINITY){
+							isNeighbor[i] = false;
+						} else{
+							isNeighbor[i] = true;
+						}
+					}
 					
 				
 //				nexthop = new int[numOfRouters];
-			} else if(dvr.type == DvrPacket.ROUTE){
+			} else if(dvr.type == DvrPacket.QUIT){
+						//quit program
+			}else{
 				linkcost = new int[numOfRouters];
 				linkcost = dvr.mincost;
 				
 				mincost = new int[numOfRouters][numOfRouters];
 				mincost[routerId] = dvr.mincost;
 				
+				isNeighbor = new boolean[numOfRouters];
+				for(int i = 0; i < numOfRouters; i++){
+					if(linkcost[i] == DvrPacket.INFINITY){
+						isNeighbor[i] = false;
+					} else{
+						isNeighbor[i] = true;
+					}
+				}
+				
 //				nexthop = new int[numOfRouters];
-			} else if(dvr.type == DvrPacket.QUIT){
-				//quit program
 			}
 
 		}else{
 			mincost[dvr.sourceid] = dvr.mincost;
 			
-			if(!localminCostVector){
+//			if(!localminCostVector){
 				//send local mincost vector to neighbors
 				
 				for(int i = 0; i < numOfRouters; i++){
 					
 					//come back to this
-					if(i == routerId || linkcost[i] == DvrPacket.INFINITY)
+					if(i == routerId){
 						continue;
-					
-						DvrPacket pkttoNeighbors  = new DvrPacket(this.routerId, i, DvrPacket.ROUTE, mincost[routerId]);
+					}
 						
-						try{
-							//something wrong
-							dOut.writeObject(pkttoNeighbors);
-							dOut.flush();
-						}catch(IOException e){
-							e.printStackTrace();
-						}
+					
+				//bellman ford algoritm
+					
+					if(mincost[routerId][i] > linkcost[dvr.sourceid] + mincost[dvr.sourceid][i]){
+						
+						mincost[routerId][i] = linkcost[dvr.sourceid] + mincost[dvr.sourceid][i];
+						
+						//need to remember what node to go through to get the efficient path
+						nexthop[i] = dvr.sourceid;
+						
+						processTimeout();
+						
+						start.cancel(true);
+						start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
+					}
+					
+//						DvrPacket pkttoNeighbors  = new DvrPacket(this.routerId, i, DvrPacket.ROUTE, mincost[routerId]);
+//						
+//						try{
+//							//something wrong
+//							dOut.writeObject(pkttoNeighbors);
+//							dOut.flush();
+//						}catch(IOException e){
+//							e.printStackTrace();
+//						}
 						
 					
 				}
 				//restart timer
-				
-				start.cancel(true);
-				start = timer.scheduleAtFixedRate(new TimeoutHandler(this), updateInterval, updateInterval, TimeUnit.MILLISECONDS);
-			} else {
-				//do nothing
-			}
 		}
 		
 		
@@ -238,10 +260,7 @@ public class Router {
 		for(int i = 0; i < numOfRouters; i++){
 			
 			//come back to this
-			if(i == routerId || linkcost[i] != DvrPacket.INFINITY){
-				
-			}else {
-
+			if(isNeighbor[i]){
 				try{
 					DvrPacket pkttoNeighbors  = new DvrPacket(this.routerId, i, DvrPacket.ROUTE, mincost[routerId]);
 					dOut.writeObject(pkttoNeighbors);
@@ -250,7 +269,10 @@ public class Router {
 					e.getMessage();
 				
 				}
+			
 			}
+
+
 				
 			
 		}
