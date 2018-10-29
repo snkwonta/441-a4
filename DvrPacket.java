@@ -1,5 +1,3 @@
-//package cpsc441.a4.shared;
-
 import java.util.*;
 import java.io.*;
 
